@@ -1,0 +1,51 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.1.4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Stop the service
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl stop keypracticabe'
+
+      - name: Update the repository on server
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} '
+            if [ ! -d /home/keypractica/kneo/.git ]; then
+              rm -rf /home/keypractica/kneo &&
+              git clone https://github.com/kneoio/kneo.git /home/keypractica/kneo
+            else
+              cd /home/keypractica/kneo &&
+              git fetch origin &&
+              git reset --hard origin/master &&
+              git clean -fd
+            fi
+          '
+
+      - name: Install dependencies on server
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'cd /home/keypractica/be_server && pip install -r requirements.txt'
+
+      - name: Start the service
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl start keypracticabe'
