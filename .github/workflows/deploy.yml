@@ -28,7 +28,7 @@ jobs:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
       - name: Stop the service
-        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl stop keypracticabe'
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl stop kneo'
 
       - name: Update the repository on server
         run: |
@@ -45,7 +45,7 @@ jobs:
           '
 
       - name: Install dependencies on server
-        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'cd /home/keypractica/be_server && pip install -r requirements.txt'
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'cd /home/keypractica/kneo && pip install -r requirements.txt'
 
       - name: Start the service
-        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl start keypracticabe'
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl start kneo'
