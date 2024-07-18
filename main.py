@@ -9,7 +9,6 @@ from repo_processors.vuejs_processor import VueJSRepoProcessor
 from services.claude_service import serve
 from utils.logging import logger
 
-# Initialize FaissVectorStore
 vector_store = FaissVectorStore()
 
 
@@ -21,7 +20,6 @@ def check_stored_context():
     for i, text in enumerate(sample, 1):
         logger.info(f"Sample {i}:\n{text}\n")
 
-    # Check for specific content
     joomla_items = [text for text in vector_store.texts if "Joomla Component" in text]
     logger.info(f"Number of Joomla components: {len(joomla_items)}")
 
@@ -57,8 +55,6 @@ def main():
     load_dotenv()
 
     start_time = time.time()
-
-    # Load or create index
     logger.info("Loading or creating FAISS index...")
     index_load_start = time.time()
     vector_store.load_or_create_index()
@@ -66,14 +62,12 @@ def main():
     logger.info(f"FAISS index loaded or created. Time taken: {index_load_end - index_load_start:.2f} seconds")
     logger.info(f"Initial number of items in vector store: {vector_store.index.ntotal if vector_store.index else 0}")
 
-    # Extract data from database
     logger.info("Extracting data from database...")
     db_start = time.time()
     extract_data()
     db_end = time.time()
     logger.info(f"Data extracted from database. Time taken: {db_end - db_start:.2f} seconds")
 
-    # Process repositories
     repo_processors = {
         'joomla': JoomlaPhpRepoProcessor(vector_store, logger),
         'java': JavaRepoProcessor(vector_store, logger),
@@ -82,13 +76,13 @@ def main():
 
     repos = {
         'joomla': [
-            "https://github.com/Semantyca/Semantyca-Joomla.git"
+            # "https://github.com/Semantyca/Semantyca-Joomla.git"
         ],
         'java': [
             "https://github.com/kneoio/Keypractica.git",
         ],
         'vuejs': [
-            "https://github.com/kneoio/kneox.git",
+            # "https://github.com/kneoio/kneox.git",
         ]
     }
 

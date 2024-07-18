@@ -8,7 +8,7 @@ def run():
     stub = claude_service_pb2_grpc.AiServiceStub(channel)
 
     request = claude_service_pb2.AIRequest(
-        prompt="What languages mentioned in the enum ?",
+        prompt="TaskController?",
         api_key="1234567890",
         session_id="test_session"
     )

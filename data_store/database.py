@@ -11,6 +11,7 @@ data_store = {
     "projects": {}
 }
 
+
 def extract_data():
     try:
         conn = psycopg2.connect(

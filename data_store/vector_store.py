@@ -4,6 +4,7 @@ import pickle
 import os
 from utils.logging import logger
 
+
 class FaissVectorStore:
     def __init__(self, dimension=384, index_file='faiss_index.pkl'):
         self.dimension = dimension
@@ -50,5 +51,6 @@ class FaissVectorStore:
     def get_sample(self, n=5):
         sample_size = min(n, len(self.texts))
         return self.texts[:sample_size]
+
 
 vector_store = FaissVectorStore()
