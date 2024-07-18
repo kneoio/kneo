@@ -1,24 +1,30 @@
 import logging
 import os
 import uuid
-from typing import Dict, Optional
+from typing import Dict
 from collections import deque
 
 import colorlog
 import psycopg2
-from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
+from anthropic import Anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, Query
-from fastapi.security import APIKeyHeader
-from pydantic import BaseModel
+import grpc
+from concurrent import futures
+from sentence_transformers import SentenceTransformer
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
-app = FastAPI()
+import claude_service_pb2
+import claude_service_pb2_grpc
+
 load_dotenv()
 API_KEY = os.getenv('CLIENT_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
-api_key_header = APIKeyHeader(name="X-API-key")
 session_store = {}
 anthropic = Anthropic(api_key=ANTHROPIC_API_KEY)
+
+# Initialize sentence transformer model for embeddings
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Configure logging
 logger = colorlog.getLogger(__name__)
@@ -36,33 +42,42 @@ handler.setFormatter(colorlog.ColoredFormatter(
 ))
 logger.addHandler(handler)
 
-
-def get_api_key(api_key: str = Depends(api_key_header)):
-    if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Could not validate credentials")
-    return api_key
-
-
 data_store: Dict[str, Dict] = {
     "tasks": {},
     "projects": {}
 }
 
 
+class SimpleVectorStore:
+    def __init__(self):
+        self.embeddings = []
+        self.texts = []
+
+    def add(self, embedding, text):
+        self.embeddings.append(embedding)
+        self.texts.append(text)
+
+    def search(self, query_embedding, top_k=3):
+        if not self.embeddings:
+            return []
+        similarities = cosine_similarity([query_embedding], self.embeddings)[0]
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        return [(self.texts[i], similarities[i]) for i in top_indices]
+
+
+vector_store = SimpleVectorStore()
+
+
 def get_claude_response(context: str, prompt: str) -> str:
     message = anthropic.messages.create(
-        model="claude-3-opus-20240229",
+        model="claude-3-5-sonnet-20240620",
         max_tokens=300,
         messages=[
             {"role": "user",
-             "content": f"Here is a summary of all available projects, along with our previous conversation:\n\n{context}\n\nPlease answer the following question or respond to the following prompt concisely and directly. Use the provided project information and our conversation history if relevant. If the information is not available or if you're unsure, please state that clearly.\n\nQuestion/Prompt: {prompt}"}
+             "content": f"Here is some relevant context based on the user's query:\n\n{context}\n\nPlease answer the following question or respond to the following prompt concisely and directly. Use the provided context and conversation history if relevant. If the information is not available or if you're unsure, please state that clearly.\n\nQuestion/Prompt: {prompt}"}
         ]
     )
     return message.content[0].text
-
-
-class Prompt(BaseModel):
-    text: str
 
 
 def extract_data():
@@ -89,6 +104,9 @@ def extract_data():
             "body": row[2],
             "status": row[3]
         }
+        text = f"Task: {row[1]}\nDescription: {row[2]}\nStatus: {row[3]}"
+        embedding = embedding_model.encode(text)
+        vector_store.add(embedding, text)
 
     cur.execute("SELECT id, name, description, status FROM prj__projects;")
     for row in cur.fetchall():
@@ -97,24 +115,28 @@ def extract_data():
             "description": row[2],
             "status": row[3]
         }
+        text = f"Project: {row[1]}\nDescription: {row[2]}\nStatus: {row[3]}"
+        embedding = embedding_model.encode(text)
+        vector_store.add(embedding, text)
 
     cur.close()
     conn.close()
-    logger.info("Data extracted successfully")
+    logger.info("Data extracted and embeddings generated successfully")
 
 
-def generate_context(session_id: str) -> str:
-    context = "Available Projects:\n"
-    for project in data_store["projects"].values():
-        context += f"Name: {project['name'] or 'N/A'}\n"
-        context += f"Description: {project['description'] or 'N/A'}\n"
-        context += f"Status: {project['status'] or 'N/A'}\n\n"
+def get_relevant_context(query, top_k=3):
+    query_embedding = embedding_model.encode(query)
+    results = vector_store.search(query_embedding, top_k)
 
-    context += "Available Tasks:\n"
-    for task in data_store["tasks"].values():
-        context += f"Title: {task['title'] or 'N/A'}\n"
-        context += f"Description: {task['body'] or 'N/A'}\n"
-        context += f"Status: {task['status'] or 'N/A'}\n\n"
+    context = "Relevant information:\n"
+    for text, similarity in results:
+        context += f"{text}\n(Similarity: {similarity:.2f})\n\n"
+
+    return context
+
+
+def generate_context(session_id: str, query: str) -> str:
+    context = get_relevant_context(query)
 
     if session_id in session_store:
         context += "Previous conversation:\n"
@@ -123,38 +145,44 @@ def generate_context(session_id: str) -> str:
     return context
 
 
-@app.post("/generate")
-async def generate_response(prompt: Prompt, api_key: str = Depends(get_api_key),
-                            session_id: Optional[str] = Query(None)):
-    if not session_id:
-        session_id = str(uuid.uuid4())
-        logger.info(f"New session created: {session_id}")
-    else:
-        logger.info(f"Existing session: {session_id}")
+class ClaudeService(claude_service_pb2_grpc.AiServiceServicer):
+    def GenerateAiResponse(self, request, context):
+        if request.api_key != API_KEY:
+            context.abort(grpc.StatusCode.PERMISSION_DENIED, "Invalid API key")
 
-    if session_id not in session_store:
-        session_store[session_id] = deque(maxlen=5)  # Store last 5 interactions
+        session_id = request.session_id or str(uuid.uuid4())
+        logger.info(f"{'New' if not request.session_id else 'Existing'} session: {session_id}")
 
-    context = generate_context(session_id)
+        if session_id not in session_store:
+            session_store[session_id] = deque(maxlen=5)  # Store last 5 interactions
 
-    logger.info(f"Session {session_id} - User prompt: {prompt.text}")
+        context_str = generate_context(session_id, request.prompt)
 
-    claude_response = get_claude_response(context, prompt.text)
+        logger.info(f"Session {session_id} - User prompt: {request.prompt}")
 
-    processed_response = claude_response.strip()
-    if len(processed_response) > 150:
-        processed_response = processed_response.split('.')[0] + '.'
+        claude_response = get_claude_response(context_str, request.prompt)
 
-    # Update conversation history
-    session_store[session_id].append(f"Human: {prompt.text}\nAI: {processed_response}")
+        processed_response = claude_response.strip()
+        if len(processed_response) > 150:
+            processed_response = processed_response.split('.')[0] + '.'
 
-    logger.info(f"Session {session_id} - AI response: {processed_response}")
+        # Update conversation history
+        session_store[session_id].append(f"Human: {request.prompt}\nAI: {processed_response}")
 
-    return {"response": processed_response, "session_id": session_id}
+        logger.info(f"Session {session_id} - AI response: {processed_response}")
+
+        return claude_service_pb2.AiResponse(response=processed_response, session_id=session_id)
+
+
+def serve():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    claude_service_pb2_grpc.add_AiServiceServicer_to_server(ClaudeService(), server)
+    server.add_insecure_port('[::]:50052')
+    server.start()
+    logger.info("Server started on port 50052")
+    server.wait_for_termination()
 
 
 if __name__ == "__main__":
     extract_data()
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    serve()

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ai_service;
+
+message AiRequest {
+    string prompt = 1;
+    string api_key = 2;
+    optional string session_id = 3;
+}
+
+message AiResponse {
+    string response = 1;
+    string session_id = 2;
+}
+
+service AiService {
+    rpc GenerateAiResponse (AiRequest) returns (AiResponse);
+}

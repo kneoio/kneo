@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package test;
+
+message TestMessage {
+  string content = 1;
+}
+
+service TestService {
+  rpc TestRPC (TestMessage) returns (TestMessage);

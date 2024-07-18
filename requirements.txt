@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 pydantic
-psycopg2
-python-dotenv
-anthropic
-colorlog
+psycopg2~=2.9.9
+python-dotenv~=1.0.1
+anthropic~=0.30.0
+colorlog~=6.8.2

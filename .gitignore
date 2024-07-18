@@ -1,3 +1,7 @@
 .env
 /.idea/**
 .venv
+/faiss_index.pkl
+/test.sh
+/claude_service_pb2.py
+/claude_service_pb2_grpc.py
