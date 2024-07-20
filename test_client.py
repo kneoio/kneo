@@ -8,9 +8,10 @@ def run():
     stub = claude_service_pb2_grpc.AiServiceStub(channel)
 
     request = claude_service_pb2.AIRequest(
-        prompt="TaskController?",
+        prompt="what is TaskController ?",
         api_key="1234567890",
         session_id="test_session"
+        # Remove the ai_model field
     )
 
     try:
@@ -20,6 +21,7 @@ def run():
         print(f"Session ID: {response.session_id}")
     except grpc.RpcError as e:
         print(f"An error occurred: {e}")
+        print(f"Details: {e.details()}")  # This will print more details about the error
 
 
 if __name__ == '__main__':
