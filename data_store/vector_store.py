@@ -6,7 +6,7 @@ from utils.logging import logger
 from sentence_transformers import SentenceTransformer
 
 
-class FaissVectorStore:
+class VectorStore:
     def __init__(self,
                  index_file='C:\\Users\\justa\\PycharmProjects\\javaObsession\\quarkus_embeddings_with_ast_20240720_142042.index',
                  metadata_file='C:\\Users\\justa\\PycharmProjects\\javaObsession\\quarkus_metadata_with_ast_20240720_142042.pkl'):
@@ -55,4 +55,4 @@ class FaissVectorStore:
         return self.texts[:sample_size]
 
 
-vector_store = FaissVectorStore()
+vector_store = VectorStore()

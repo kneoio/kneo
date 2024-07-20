@@ -6,7 +6,7 @@ from concurrent import futures
 from anthropic import Anthropic
 from config import API_KEY, ANTHROPIC_API_KEY
 from data_store.vector_store import vector_store
-from utils.logging import logger
+from utils.logging import logger, log_user_prompt, log_context, log_server_response
 import claude_service_pb2
 import claude_service_pb2_grpc
 
@@ -41,7 +41,7 @@ def get_relevant_context(query, top_k=3):
         raise
 
 
-def generate_context(session_id: str, query: str) -> str:
+def generate_context(session_id: str, query: str, session_store: dict) -> str:
     try:
         context = get_relevant_context(query)
 
@@ -58,10 +58,6 @@ def generate_context(session_id: str, query: str) -> str:
 
 class AIService(claude_service_pb2_grpc.AiServiceServicer):
     def GenerateAiResponse(self, request, context):
-        print(f"Received request: {request}")
-        print(f"API Key: {request.api_key}")
-        print(f"Prompt: {request.prompt}")
-        print(f"Session ID: {request.session_id}")
         try:
             if request.api_key != API_KEY:
                 context.abort(grpc.StatusCode.PERMISSION_DENIED, "Invalid API key")
@@ -72,17 +68,17 @@ class AIService(claude_service_pb2_grpc.AiServiceServicer):
             if session_id not in session_store:
                 session_store[session_id] = deque(maxlen=5)  # Store last 5 interactions
 
-            context_str = generate_context(session_id, request.prompt)
+            context_str = generate_context(session_id, request.prompt, session_store)
 
-            logger.warning(f"Session {session_id} - User prompt: {request.prompt}")
-            logger.warning(f"Full context string: {context_str}")
+            log_user_prompt(request.prompt)
+            log_context(context_str)
 
             ai_response = get_claude_response(context_str, request.prompt)
 
             # Update conversation history
             session_store[session_id].append(f"Human: {request.prompt}\nAI: {ai_response}")
 
-            logger.info(f"Session {session_id} - AI response: {ai_response}")
+            log_server_response(ai_response)
 
             return claude_service_pb2.AiResponse(response=ai_response, session_id=session_id)
         except Exception as e:
