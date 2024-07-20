@@ -13,6 +13,15 @@ message AiResponse {
     string session_id = 2;
 }
 
+message ProjectStructureRequest {
+    string api_key = 1;
+}
+
+message ProjectStructureResponse {
+    string structure = 1;
+}
+
 service AiService {
     rpc GenerateAiResponse (AiRequest) returns (AiResponse);
+    rpc GetProjectStructure (ProjectStructureRequest) returns (ProjectStructureResponse);
 }

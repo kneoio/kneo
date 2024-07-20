@@ -1,14 +1,19 @@
 import grpc
-import claude_service_pb2
-import claude_service_pb2_grpc
+import ai_service_pb2
+import ai_service_pb2_grpc
 
 
 def run():
     channel = grpc.insecure_channel('localhost:50052')
-    stub = claude_service_pb2_grpc.AiServiceStub(channel)
+    stub = ai_service_pb2_grpc.AiServiceStub(channel)
 
-    request = claude_service_pb2.AIRequest(
-        prompt="what is TaskController ?",
+    request = ai_service_pb2.AiRequest(
+        # prompt="Look for PolicyController ?",
+        # prompt="Is it based on spring or jax-rs ?",
+        #prompt="Potentially modify controller files (purpose: 'REST Controller') to add authentication checks or annotations.",
+        #prompt="can you print calculate method  with the annotation that we mentioned earlier so I can past it ",
+        prompt="can you print all dependecies ",
+
         api_key="1234567890",
         session_id="test_session"
         # Remove the ai_model field

@@ -1,6 +1,7 @@
-import os
 import time
+
 from dotenv import load_dotenv
+
 from data_store.vector_store import VectorStore
 from services.ai_service import serve
 from utils.logging import logger
@@ -13,8 +14,8 @@ def main():
     logger.info("Loading FAISS index and metadata...")
 
     vector_store = VectorStore(
-        index_file='C:\\Users\\justa\\PycharmProjects\\javaObsession\\quarkus_embeddings_with_ast_20240720_142042.index',
-        metadata_file='C:\\Users\\justa\\PycharmProjects\\javaObsession\\quarkus_metadata_with_ast_20240720_142042.pkl'
+        index_file='../javaObsession/output/embeddings.index',
+        metadata_file='../javaObsession/output/metadata.pkl'
     )
 
     index_load_end = time.time()

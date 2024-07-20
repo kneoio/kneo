@@ -8,8 +8,8 @@ from sentence_transformers import SentenceTransformer
 
 class VectorStore:
     def __init__(self,
-                 index_file='C:\\Users\\justa\\PycharmProjects\\javaObsession\\quarkus_embeddings_with_ast_20240720_142042.index',
-                 metadata_file='C:\\Users\\justa\\PycharmProjects\\javaObsession\\quarkus_metadata_with_ast_20240720_142042.pkl'):
+                 index_file='../javaObsession/output/embeddings.index',
+                 metadata_file='../javaObsession/output/metadata.pkl'):
         self.index_file = index_file
         self.metadata_file = metadata_file
         self.index = None
