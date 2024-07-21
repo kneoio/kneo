@@ -8,11 +8,11 @@ def run():
     stub = ai_service_pb2_grpc.AiServiceStub(channel)
 
     request = ai_service_pb2.AiRequest(
-        # prompt="Look for PolicyController ?",
+         prompt="Look for PolicyController ?",
         # prompt="Is it based on spring or jax-rs ?",
         #prompt="Potentially modify controller files (purpose: 'REST Controller') to add authentication checks or annotations.",
         #prompt="can you print calculate method  with the annotation that we mentioned earlier so I can past it ",
-        prompt="can you print all dependecies ",
+        #prompt="can you print all dependecies ",
 
         api_key="1234567890",
         session_id="test_session"

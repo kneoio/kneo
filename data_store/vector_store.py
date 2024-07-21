@@ -7,11 +7,9 @@ from sentence_transformers import SentenceTransformer
 
 
 class VectorStore:
-    def __init__(self,
-                 index_file='../javaObsession/output/embeddings.index',
-                 metadata_file='../javaObsession/output/metadata.pkl'):
-        self.index_file = index_file
-        self.metadata_file = metadata_file
+    def __init__(self):
+        self.index_file = os.getenv('INDEX_FILE')
+        self.metadata_file = os.getenv('METADATA_FILE')
         self.index = None
         self.texts = []
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
