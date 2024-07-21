@@ -1,10 +1,11 @@
+import logging
+
 import colorama
 import colorlog
 from colorama import Fore, Back, Style
-import logging
 
-# Initialize colorama
 colorama.init(autoreset=True)
+
 
 class ColoredFormatter(colorlog.ColoredFormatter):
     def format(self, record):
@@ -12,8 +13,9 @@ class ColoredFormatter(colorlog.ColoredFormatter):
             record.msg = f"{record.color}{record.msg}{Style.RESET_ALL}"
         return super().format(record)
 
-logger = colorlog.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+logg = colorlog.getLogger(__name__)
+logg.setLevel(logging.INFO)
 
 handler = colorlog.StreamHandler()
 formatter = ColoredFormatter(
@@ -29,14 +31,17 @@ formatter = ColoredFormatter(
     style='%'
 )
 handler.setFormatter(formatter)
-logger.addHandler(handler)
+logg.addHandler(handler)
+
 
 # Custom logging methods
 def log_user_prompt(prompt):
-    logger.info(f"User prompt: {prompt}", extra={'color': Fore.CYAN})
+    logg.info(f"User prompt: {prompt}", extra={'color': Fore.CYAN})
+
 
 def log_server_response(response):
-    logger.info(f"Server response: {response}", extra={'color': Fore.MAGENTA})
+    logg.info(f"Server response: {response}", extra={'color': Fore.MAGENTA})
+
 
 def log_context(context):
-    logger.info(f"Context: {context}", extra={'color': Fore.YELLOW})
+    logg.info(f"Context: {context}", extra={'color': Fore.YELLOW})

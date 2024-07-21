@@ -6,7 +6,7 @@ from concurrent import futures
 from anthropic import Anthropic
 from config import API_KEY, ANTHROPIC_API_KEY
 from data_store.vector_store import vector_store
-from utils.logging import logger, log_user_prompt, log_context, log_server_response
+from utils.loggr import logg, log_user_prompt, log_context, log_server_response
 import ai_service_pb2
 import ai_service_pb2_grpc
 
@@ -47,8 +47,8 @@ def get_relevant_context(query, top_k=3):
 
         return context
     except Exception as e:
-        logger.error(f"Error in get_relevant_context: {str(e)}")
-        logger.error(traceback.format_exc())
+        logg.error(f"Error in get_relevant_context: {str(e)}")
+        logg.error(traceback.format_exc())
         raise
 
 
@@ -59,7 +59,8 @@ def generate_context(session_id: str, query: str, session_store: dict) -> str:
         context += "\nInstructions for AI:\n"
         context += "1. Use the full content of the files provided above to answer the user's question.\n"
         context += "2. If asked about modifying a file, refer to the actual content and suggest specific changes.\n"
-        context += "3. If the relevant file content is not provided, clearly state that you don't have access to the file content.\n"
+        context += ("3. If the relevant file content is not provided, clearly state that you don't have access to the "
+                    "file content.\n")
 
         if session_id in session_store:
             context += "\nPrevious conversation:\n"
@@ -67,8 +68,8 @@ def generate_context(session_id: str, query: str, session_store: dict) -> str:
 
         return context
     except Exception as e:
-        logger.error(f"Error in generate_context: {str(e)}")
-        logger.error(traceback.format_exc())
+        logg.error(f"Error in generate_context: {str(e)}")
+        logg.error(traceback.format_exc())
         raise
 
 
@@ -79,7 +80,7 @@ class AIService(ai_service_pb2_grpc.AiServiceServicer):
             if request.api_key != API_KEY:
                 context.abort(grpc.StatusCode.PERMISSION_DENIED, "Invalid API key")
 
-            logger.info(f"{'New' if not request.session_id else 'Existing'} session: {session_id}")
+            logg.info(f"{'New' if not request.session_id else 'Existing'} session: {session_id}")
 
             if session_id not in session_store:
                 session_store[session_id] = deque(maxlen=5)  # Store last 5 interactions
@@ -99,7 +100,7 @@ class AIService(ai_service_pb2_grpc.AiServiceServicer):
             return ai_service_pb2.AiResponse(response=ai_response, session_id=session_id)
         except Exception as e:
             error_msg = f"Error in GenerateAiResponse for session {session_id}: {str(e)}\n{traceback.format_exc()}"
-            logger.error(error_msg)
+            logg.error(error_msg)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_msg)
             return ai_service_pb2.AiResponse(response=f"An error occurred: {str(e)}", session_id=session_id)
@@ -117,7 +118,7 @@ class AIService(ai_service_pb2_grpc.AiServiceServicer):
             return ai_service_pb2.ProjectStructureResponse(structure=structure_info)
         except Exception as e:
             error_msg = f"Error in GetProjectStructure: {str(e)}\n{traceback.format_exc()}"
-            logger.error(error_msg)
+            logg.error(error_msg)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_msg)
             return ai_service_pb2.ProjectStructureResponse(structure=f"An error occurred: {str(e)}")
@@ -132,7 +133,7 @@ def serve():
     ai_service_pb2_grpc.add_AiServiceServicer_to_server(AIService(), server)
     server.add_insecure_port('[::]:50052')
     server.start()
-    logger.info("Server started on port 50052")
+    logg.info("Server started on port 50052")
     server.wait_for_termination()
 
 

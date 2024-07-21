@@ -2,7 +2,7 @@ import numpy as np
 import faiss
 import pickle
 import os
-from utils.logging import logger
+from utils.loggr import logg
 from sentence_transformers import SentenceTransformer
 
 
@@ -17,28 +17,28 @@ class VectorStore:
 
     def load_index_and_metadata(self):
         if os.path.exists(self.index_file) and os.path.exists(self.metadata_file):
-            logger.info(f"Loading existing index from {self.index_file}")
+            logg.info(f"Loading existing index from {self.index_file}")
             self.index = faiss.read_index(self.index_file)
 
-            logger.info(f"Loading metadata from {self.metadata_file}")
+            logg.info(f"Loading metadata from {self.metadata_file}")
             with open(self.metadata_file, 'rb') as f:
                 self.texts = pickle.load(f)
 
-            logger.info(f"Loaded index with {self.index.ntotal} items and {len(self.texts)} texts")
-            logger.info(f"Index dimension: {self.index.d}")
+            logg.info(f"Loaded index with {self.index.ntotal} items and {len(self.texts)} texts")
+            logg.info(f"Index dimension: {self.index.d}")
         else:
-            logger.error("Index or metadata file not found. Please ensure both files exist.")
+            logg.error("Index or metadata file not found. Please ensure both files exist.")
             raise FileNotFoundError("Index or metadata file not found")
 
     def search(self, query, top_k=3):
         if self.index is None or self.index.ntotal == 0:
-            logger.warning("Search attempted on empty index")
+            logg.warning("Search attempted on empty index")
             return []
         query_embedding = self.embedding_model.encode([query])[0]
 
         # Check if dimensions match
         if query_embedding.shape[0] != self.index.d:
-            logger.warning(f"Dimension mismatch. Query: {query_embedding.shape[0]}, Index: {self.index.d}")
+            logg.warning(f"Dimension mismatch. Query: {query_embedding.shape[0]}, Index: {self.index.d}")
             # Adjust the embedding dimension
             if query_embedding.shape[0] > self.index.d:
                 query_embedding = query_embedding[:self.index.d]

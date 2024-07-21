@@ -2,7 +2,6 @@ import grpc
 import ai_service_pb2
 import ai_service_pb2_grpc
 
-
 def run():
     channel = grpc.insecure_channel('localhost:50052')
     stub = ai_service_pb2_grpc.AiServiceStub(channel)
