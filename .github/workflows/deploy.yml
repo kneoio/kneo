@@ -12,32 +12,54 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4.1.4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      - name: Stop the service
-        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl stop kneo'
-
-      - name: Update the repository on server
+      - name: Deploy and update application
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} '
-            if [ ! -d /home/keypractica/kneo/.git ]; then
-              rm -rf /home/keypractica/kneo &&
-              git clone https://github.com/kneoio/kneo.git /home/keypractica/kneo
-            else
-              cd /home/keypractica/kneo &&
-              git fetch origin &&
-              git reset --hard origin/master &&
-              git clean -fd
+            # Stop the service
+            sudo systemctl stop kneo
+
+            # Backup .env file if it exists
+            if [ -f /home/keypractica/kneo/.env ]; then
+              cp /home/keypractica/kneo/.env /home/keypractica/kneo/.env.backup
             fi
+
+            # Update or clone the repository
+            if [ -d /home/keypractica/kneo/.git ]; then
+              cd /home/keypractica/kneo
+              git fetch origin
+              git reset --hard origin/master
+              git clean -fd -e .env -e .env.backup
+            else
+              git clone https://github.com/kneoio/kneo.git /home/keypractica/kneo
+            fi
+
+            # Restore .env file if backup exists
+            if [ -f /home/keypractica/kneo/.env.backup ]; then
+              mv /home/keypractica/kneo/.env.backup /home/keypractica/kneo/.env
+            fi
+
+            # Create a new virtual environment
+            cd /home/keypractica/kneo
+            python3 -m venv venv_new
+            source venv_new/bin/activate
+            pip install -r requirements.txt
+            deactivate
+
+            # Replace the old venv with the new one
+            rm -rf venv
+            mv venv_new venv
+
+            # Ensure correct permissions
+            sudo chown -R keypractica:keypractica /home/keypractica/kneo
+
+            # Start the service
+            sudo systemctl start kneo
           '
 
-      - name: Start the service
-        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl start kneo'
+      - name: Check service status
+        run: ssh -o StrictHostKeyChecking=no -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.HOST_NAME }} 'sudo systemctl status kneo'
